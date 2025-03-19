@@ -1,0 +1,52 @@
+name: 'Jinja2 Renderer'
+description: 'Render Jinja2 templates with custom variables'
+author: 'lexty'
+branding:
+  icon: 'file-text'
+  color: 'blue'
+
+inputs:
+  template_path:
+    description: 'Path to the Jinja2 template file or directory'
+    required: true
+  output_path:
+    description: 'Path where rendered files will be saved'
+    required: true
+  variables_file:
+    description: 'Path to a JSON or YAML file with variables to use in templates'
+    required: false
+  variables:
+    description: 'JSON string or key=value pairs for template variables (alternative to variables_file)'
+    required: false
+  environment_variables:
+    description: 'Use environment variables in templates (true/false)'
+    required: false
+    default: 'true'
+  recursive:
+    description: 'Process templates in subdirectories recursively'
+    required: false
+    default: 'false'
+  file_pattern:
+    description: 'Glob pattern for finding template files (e.g. "*.j2", "*.template")'
+    required: false
+    default: '*.j2'
+  strict:
+    description: 'Enable strict undefined variable checking'
+    required: false
+    default: 'false'
+  trim_blocks:
+    description: 'Configure Jinja2 to trim blocks'
+    required: false
+    default: 'true'
+  lstrip_blocks:
+    description: 'Configure Jinja2 to strip blocks'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+
+outputs:
+  rendered_files:
+    description: 'List of rendered template files'

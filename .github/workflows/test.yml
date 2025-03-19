@@ -1,0 +1,70 @@
+name: Test GitHub Action
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test templates
+        run: |
+          mkdir -p test/templates
+          mkdir -p test/output
+          
+          echo '# Config for {{ app_name }} v{{ version }}' > test/templates/config.conf.j2
+          echo '# Features:' >> test/templates/config.conf.j2
+          echo '{% for feature in features %}' >> test/templates/config.conf.j2
+          echo '# - {{ feature }}' >> test/templates/config.conf.j2
+          echo '{% endfor %}' >> test/templates/config.conf.j2
+          
+          echo '{"app_name": "TestApp", "version": "1.0.0", "features": ["a", "b", "c"]}' > test/variables.json
+
+      - name: Test Action
+        uses: ./
+        with:
+          template_path: './test/templates'
+          output_path: './test/output'
+          variables_file: './test/variables.json'
+
+      - name: Verify Output
+        run: |
+          if [ ! -f test/output/config.conf ]; then
+            echo "Output file not created"
+            exit 1
+          fi
+          
+          if ! grep -q "Config for TestApp" test/output/config.conf; then
+            echo "Template not rendered correctly"
+            cat test/output/config.conf
+            exit 1
+          fi
+          
+          echo "Test passed!"
+          cat test/output/config.conf
+
+  # Test building for multiple architectures
+  test-multiarch:
+    runs-on: ubuntu-latest
+    needs: test-action
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build for multiple architectures
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          load: false
