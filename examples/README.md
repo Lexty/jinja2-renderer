@@ -1,157 +1,234 @@
-# Jinja2 Template Renderer Examples
+# Jinja2 Renderer Examples
 
-This directory contains example templates and configurations to demonstrate the usage of the Jinja2 Template Renderer GitHub Action.
+This directory contains example configurations and templates to demonstrate the usage of the Jinja2 Renderer GitHub Action.
 
 ## Basic Examples
 
-### Configuration Template
+### Single Template Rendering
 
-**Template File: `config.conf.j2`**
-
+**Template (`templates/config.conf.j2`):**
 ```jinja
 # Configuration for {{ app_name }} v{{ version }}
-
-[app]
-name = {{ app_name }}
-version = {{ version }}
 debug = {{ debug }}
-
-[features]
-{% for feature in features %}
-{{ feature }} = enabled
-{% endfor %}
-
-[database]
-host = {{ database.host }}
-port = {{ database.port }}
+log_level = {{ log_level | default('info') }}
 ```
 
-**Variables File: `variables.json`**
-
+**Variables (`variables.json`):**
 ```json
 {
-  "app_name": "MyApp",
-  "version": "1.2.3",
-  "debug": true,
-  "features": ["auth", "api", "admin"],
-  "database": {
-    "host": "localhost",
-    "port": 5432
-  }
+  "app_name": "ExampleApp",
+  "version": "1.0.0",
+  "debug": true
 }
 ```
 
-**Usage:**
-
+**Workflow:**
 ```yaml
 - name: Render Config
   uses: lexty/jinja2-renderer@v1
   with:
-    template_path: './examples/config.conf.j2'
-    output_path: './output/config.conf'
-    variables_file: './examples/variables.json'
+    template_path: 'templates/config.conf.j2'
+    output_path: 'output/config.conf'
+    variables_file: 'variables.json'
 ```
 
-### Nginx Configuration
-
-**Template File: `nginx.conf.j2`**
-
-```jinja
-# Nginx configuration for {{ server_name }}
-
-server {
-    listen {{ port }};
-    server_name {{ server_name }};
-    
-    location / {
-        proxy_pass http://backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-    
-    {% if ssl_enabled %}
-    listen 443 ssl;
-    ssl_certificate /etc/nginx/ssl/{{ server_name }}.crt;
-    ssl_certificate_key /etc/nginx/ssl/{{ server_name }}.key;
-    {% endif %}
-}
-
-upstream backend {
-    {% for server in backend_servers %}
-    server {{ server.host }}:{{ server.port }};
-    {% endfor %}
-}
+**Result (`output/config.conf`):**
+```
+# Configuration for ExampleApp v1.0.0
+debug = True
+log_level = info
 ```
 
-**Variables File: `nginx-variables.yaml`**
+### Directory Processing
 
+**Structure:**
+```
+templates/
+├── app.conf.j2
+├── nginx.conf.j2
+└── logging.conf.j2
+```
+
+**Workflow:**
 ```yaml
-server_name: example.com
-port: 80
-ssl_enabled: true
-backend_servers:
-  - host: app1.internal
-    port: 8080
-  - host: app2.internal
-    port: 8080
-```
-
-**Usage:**
-
-```yaml
-- name: Render Nginx Config
+- name: Process Template Directory
   uses: lexty/jinja2-renderer@v1
   with:
-    template_path: './examples/nginx.conf.j2'
-    output_path: './output/nginx.conf'
-    variables_file: './examples/nginx-variables.yaml'
+    template_path: 'templates'
+    output_path: 'output'
+    variables_file: 'variables.json'
 ```
+
+This will process all `.j2` files in the `templates` directory and save the rendered files to the `output` directory.
 
 ## Advanced Examples
 
-### Environment Variables
+### Using Key-Value Variables with Automatic Type Conversion
 
-**Template File: `env-example.conf.j2`**
-
+**Template (`templates/types.conf.j2`):**
 ```jinja
-# Configuration using environment variables
-HOSTNAME={{ env.HOSTNAME }}
-GITHUB_WORKSPACE={{ env.GITHUB_WORKSPACE }}
-CURRENT_BRANCH={{ env.GITHUB_REF_NAME }}
-DEPLOYMENT_ENV={{ env.get('DEPLOYMENT_ENV', 'development') }}
+# Type demonstrations
+boolean_true = {{ boolean_true }} (type: {{ boolean_true.__class__.__name__ }})
+boolean_false = {{ boolean_false }} (type: {{ boolean_false.__class__.__name__ }})
+integer = {{ integer }} (type: {{ integer.__class__.__name__ }})
+float_number = {{ float_number }} (type: {{ float_number.__class__.__name__ }})
+string = {{ string }} (type: {{ string.__class__.__name__ }})
 ```
 
-**Usage:**
-
+**Workflow:**
 ```yaml
-- name: Render Environment Config
+- name: Demonstrate Type Conversion
   uses: lexty/jinja2-renderer@v1
   with:
-    template_path: './examples/env-example.conf.j2'
-    output_path: './output/env-config.conf'
-  env:
-    DEPLOYMENT_ENV: production
+    template_path: 'templates/types.conf.j2'
+    output_path: 'output/types.conf'
+    variables: |
+      boolean_true=true
+      boolean_false=false
+      integer=42
+      float_number=3.14
+      string=hello
 ```
 
-### Multiple Templates with Custom Pattern
+**Result (`output/types.conf`):**
+```
+# Type demonstrations
+boolean_true = True (type: bool)
+boolean_false = False (type: bool)
+integer = 42 (type: int)
+float_number = 3.14 (type: float)
+string = hello (type: str)
+```
 
-**Directory Structure:**
+### Using Environment Variables
+
+**Template (`templates/env.conf.j2`):**
+```jinja
+# Environment Variables
+GITHUB_ACTOR = {{ env.GITHUB_ACTOR }}
+CUSTOM_VAR = {{ env.get('CUSTOM_VAR', 'not set') }}
+```
+
+**Workflow:**
+```yaml
+- name: Render with Environment Variables
+  uses: lexty/jinja2-renderer@v1
+  with:
+    template_path: 'templates/env.conf.j2'
+    output_path: 'output/env.conf'
+    environment_variables: 'true'
+  env:
+    CUSTOM_VAR: 'custom value'
+```
+
+### Using Nested Directory Structure
+
+**Structure:**
 ```
 templates/
-  ├── app.yaml.template
-  ├── service.yaml.template
-  └── deployment.yaml.template
+├── configs/
+│   ├── app.conf.j2
+│   └── logging.conf.j2
+└── nginx/
+    └── site.conf.j2
 ```
 
-**Usage:**
-
+**Workflow:**
 ```yaml
-- name: Render Kubernetes Templates
+- name: Process Nested Directories
   uses: lexty/jinja2-renderer@v1
   with:
-    template_path: './templates'
-    output_path: './k8s'
-    variables_file: './k8s-variables.yaml'
-    file_pattern: '*.yaml.template'
+    template_path: 'templates'
+    output_path: 'output'
+    variables_file: 'variables.json'
     recursive: 'true'
+```
+
+**Result:**
+```
+output/
+├── configs/
+│   ├── app.conf
+│   └── logging.conf
+└── nginx/
+    └── site.conf
+```
+
+## Troubleshooting Examples
+
+### Handling Missing Variables with Default Values
+
+**Template (`templates/defaults.conf.j2`):**
+```jinja
+# Using default values
+required_value = {{ required_value }}
+optional_value = {{ optional_value | default('default value') }}
+```
+
+### Strict Mode Example
+
+**Workflow:**
+```yaml
+- name: Render in Strict Mode
+  uses: lexty/jinja2-renderer@v1
+  with:
+    template_path: 'templates/config.j2'
+    output_path: 'output/config'
+    variables: 'required_value=exists'
+    strict: 'true'  # This will fail if any variable is undefined
+```
+
+## Use Cases
+
+### Kubernetes Manifests
+
+**Template (`templates/deployment.yaml.j2`):**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ app_name }}
+  namespace: {{ namespace }}
+spec:
+  replicas: {{ replicas }}
+  selector:
+    matchLabels:
+      app: {{ app_name }}
+  template:
+    metadata:
+      labels:
+        app: {{ app_name }}
+    spec:
+      containers:
+      - name: {{ app_name }}
+        image: {{ docker_image }}:{{ image_tag }}
+        ports:
+        - containerPort: {{ port }}
+        env:
+        {% for key, value in environment_variables.items() %}
+        - name: {{ key }}
+          value: "{{ value }}"
+        {% endfor %}
+```
+
+### Docker Compose File
+
+**Template (`templates/docker-compose.yml.j2`):**
+```yaml
+version: '3'
+services:
+  {{ service_name }}:
+    image: {{ docker_image }}:{{ image_tag }}
+    ports:
+      - "{{ host_port }}:{{ container_port }}"
+    environment:
+      {% for key, value in env_vars.items() %}
+      {{ key }}: {{ value }}
+      {% endfor %}
+    {% if volumes %}
+    volumes:
+      {% for volume in volumes %}
+      - {{ volume }}
+      {% endfor %}
+    {% endif %}
 ```
