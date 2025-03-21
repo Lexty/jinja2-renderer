@@ -10,11 +10,13 @@ This GitHub Action allows you to render [Jinja2](https://jinja.palletsprojects.c
 
 - ✅ Render single templates or process entire directories
 - ✅ Load variables from JSON or YAML files
-- ✅ Pass variables directly as a JSON string
+- ✅ Pass variables directly as JSON string or key-value pairs
+- ✅ Automatic type conversion for key-value pairs
 - ✅ Recursive directory processing
 - ✅ Custom file extension support
 - ✅ Multi-architecture support (amd64 and arm64)
 - ✅ Docker-based for consistent execution
+- ✅ Detailed error reporting with strict mode support
 
 ## Usage
 
@@ -55,6 +57,10 @@ jobs:
 
 ### Using Key-Value Inline Variables
 
+The action supports three formats for key-value variables:
+
+#### Multi-line format (with pipe character)
+
 ```yaml
 - name: Render Config
   uses: lexty/jinja2-renderer@v1
@@ -66,6 +72,41 @@ jobs:
       port=80
       max_connections=1024
 ```
+
+#### Single-line format (space-separated)
+
+```yaml
+- name: Render Config
+  uses: lexty/jinja2-renderer@v1
+  with:
+    template_path: 'templates/nginx.conf.j2'
+    output_path: 'output/nginx.conf'
+    variables: 'server_name=example.com port=80 max_connections=1024'
+```
+
+#### Using YAML block scalar (>-)
+
+```yaml
+- name: Render Config
+  uses: lexty/jinja2-renderer@v1
+  with:
+    template_path: 'templates/nginx.conf.j2'
+    output_path: 'output/nginx.conf'
+    variables: >-
+      server_name=example.com 
+      port=80 
+      max_connections=1024
+```
+
+### Data Type Conversion
+
+When using key-value pairs format, the action automatically converts values to appropriate types:
+
+- `true`, `True`, `yes`, `y`, `1` → boolean `true`
+- `false`, `False`, `no`, `n`, `0` → boolean `false`
+- Numbers (e.g., `123`) → integers
+- Decimal numbers (e.g., `12.34`) → floats
+- All other values → strings
 
 ### Using Environment Variables
 
@@ -176,6 +217,34 @@ For more detailed examples with template files and configurations, check out the
     echo "Rendered files: ${{ steps.render.outputs.rendered_files }}"
     # Do something with the rendered files
 ```
+
+## Troubleshooting
+
+### Common Issues
+
+#### Variable Parsing Errors
+
+If you're seeing parsing errors with your variables:
+
+1. For JSON format, ensure your JSON is valid with properly quoted keys and values
+2. For key-value pairs, use the format `key=value` with spaces between pairs
+3. Try using a variables file instead of inline variables for complex data
+
+#### No Templates Found
+
+If no templates are being rendered:
+
+1. Check that your template files match the `file_pattern` (default is `*.j2`)
+2. Verify the `template_path` is correct
+3. If using `recursive: true`, ensure templates are in the expected subdirectories
+
+#### Strict Mode Failures
+
+When using `strict: true`, all variables used in templates must be defined. If you get errors:
+
+1. Make sure all variables referenced in your templates are provided
+2. Use `{{ variable | default('fallback') }}` in templates for optional variables
+3. Consider setting `strict: false` during development
 
 ## File Format Support
 
