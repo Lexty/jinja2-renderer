@@ -13,7 +13,10 @@ inputs:
     description: 'Path where rendered files will be saved'
     required: true
   variables_file:
-    description: 'Path to a JSON or YAML file with variables to use in templates'
+    description: 'Path to a JSON, YAML, or .env file with variables to use in templates'
+    required: false
+  variables_file_format:
+    description: 'Explicit format specification for variables_file (json, yaml, env). If not specified, format is auto-detected by file extension'
     required: false
   variables:
     description: 'JSON string or key=value pairs for template variables (alternative to variables_file)'

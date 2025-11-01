@@ -7,7 +7,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 WORKDIR /app
 
 # Set up dependencies
-RUN pip install --no-cache-dir jinja2 pyyaml
+RUN pip install --no-cache-dir jinja2 pyyaml python-dotenv
 
 # Create a builder image for multi-arch
 FROM base AS builder-amd64

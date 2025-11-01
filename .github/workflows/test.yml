@@ -2,7 +2,10 @@ name: Test GitHub Action
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'feature/**'
+      - 'fix/**'
   pull_request:
     branches: [ main ]
 
@@ -128,9 +131,195 @@ jobs:
           
           echo "Strict mode test passed!"
 
+  test-env-file-basic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test templates and .env file
+        run: |
+          mkdir -p test/templates
+          mkdir -p test/output
+
+          echo '# App: {{ app_name }}' > test/templates/app.conf.j2
+          echo '# Port: {{ port }}' >> test/templates/app.conf.j2
+          echo '# Debug: {{ debug }}' >> test/templates/app.conf.j2
+
+          cat > test/variables.env << 'EOF'
+          # Application configuration
+          app_name=EnvTestApp
+          port=8080
+          debug=true
+          EOF
+
+      - name: Test with .env file (auto-detect)
+        uses: ./
+        with:
+          template_path: './test/templates/app.conf.j2'
+          output_path: './test/output/app.conf'
+          variables_file: './test/variables.env'
+
+      - name: Verify .env output
+        run: |
+          if [ ! -f test/output/app.conf ]; then
+            echo "Output file not created"
+            exit 1
+          fi
+
+          if ! grep -q "App: EnvTestApp" test/output/app.conf; then
+            echo ".env file not parsed correctly"
+            cat test/output/app.conf
+            exit 1
+          fi
+
+          if ! grep -q "Port: 8080" test/output/app.conf; then
+            echo ".env integer conversion failed"
+            cat test/output/app.conf
+            exit 1
+          fi
+
+          echo "Test with .env file passed!"
+          cat test/output/app.conf
+
+  test-env-file-quoted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test with quoted values
+        run: |
+          mkdir -p test/templates
+          mkdir -p test/output
+
+          echo 'Message: {{ message }}' > test/templates/quoted.conf.j2
+          echo 'Path: {{ path }}' >> test/templates/quoted.conf.j2
+
+          cat > test/variables.env << 'EOF'
+          message="Hello, World! This is a message."
+          path='/usr/local/bin'
+          EOF
+
+      - name: Test with quoted .env values
+        uses: ./
+        with:
+          template_path: './test/templates/quoted.conf.j2'
+          output_path: './test/output/quoted.conf'
+          variables_file: './test/variables.env'
+
+      - name: Verify quoted values
+        run: |
+          if ! grep -q "Hello, World! This is a message" test/output/quoted.conf; then
+            echo "Quoted value parsing failed"
+            cat test/output/quoted.conf
+            exit 1
+          fi
+
+          echo "Quoted values test passed!"
+          cat test/output/quoted.conf
+
+  test-env-file-multiline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test with multiline values
+        run: |
+          mkdir -p test/templates
+          mkdir -p test/output
+
+          echo 'Description: {{ description }}' > test/templates/multiline.conf.j2
+
+          cat > test/variables.env << 'EOF'
+          description="This is a
+          multiline
+          description"
+          EOF
+
+      - name: Test with multiline .env values
+        uses: ./
+        with:
+          template_path: './test/templates/multiline.conf.j2'
+          output_path: './test/output/multiline.conf'
+          variables_file: './test/variables.env'
+
+      - name: Verify multiline values
+        run: |
+          if ! grep -q "multiline" test/output/multiline.conf; then
+            echo "Multiline value parsing failed"
+            cat test/output/multiline.conf
+            exit 1
+          fi
+
+          echo "Multiline values test passed!"
+          cat test/output/multiline.conf
+
+  test-env-file-escapes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test with escape sequences
+        run: |
+          mkdir -p test/templates
+          mkdir -p test/output
+
+          echo 'Text: {{ text }}' > test/templates/escapes.conf.j2
+
+          cat > test/variables.env << 'EOF'
+          text="Line1\nLine2\tTabbed"
+          EOF
+
+      - name: Test with escape sequences
+        uses: ./
+        with:
+          template_path: './test/templates/escapes.conf.j2'
+          output_path: './test/output/escapes.conf'
+          variables_file: './test/variables.env'
+
+      - name: Verify escape sequences
+        run: |
+          echo "Escape sequences test passed!"
+          cat test/output/escapes.conf
+
+  test-env-file-format-explicit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test with explicit format
+        run: |
+          mkdir -p test/templates
+          mkdir -p test/output
+
+          echo 'Value: {{ key }}' > test/templates/explicit.conf.j2
+
+          # Create .env file with non-standard extension
+          cat > test/variables.txt << 'EOF'
+          key=explicit_format_test
+          EOF
+
+      - name: Test with explicit format specification
+        uses: ./
+        with:
+          template_path: './test/templates/explicit.conf.j2'
+          output_path: './test/output/explicit.conf'
+          variables_file: './test/variables.txt'
+          variables_file_format: 'env'
+
+      - name: Verify explicit format
+        run: |
+          if ! grep -q "explicit_format_test" test/output/explicit.conf; then
+            echo "Explicit format specification failed"
+            cat test/output/explicit.conf
+            exit 1
+          fi
+
+          echo "Explicit format test passed!"
+          cat test/output/explicit.conf
+
   test-multiarch:
     runs-on: ubuntu-latest
-    needs: [test-json-variables, test-key-value-variables]
+    needs: [test-json-variables, test-key-value-variables, test-env-file-basic]
     steps:
       - uses: actions/checkout@v4
 
