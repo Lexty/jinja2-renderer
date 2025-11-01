@@ -82,14 +82,14 @@ jobs:
             echo "Output file not created"
             exit 1
           fi
-          
+
           if ! grep -q "App: TestApp" test/output/app.conf; then
             echo "Template not rendered correctly"
             cat test/output/app.conf
             exit 1
           fi
-          
-          if ! grep -q "Debug: true" test/output/app.conf; then
+
+          if ! grep -q "Debug: True" test/output/app.conf; then
             echo "Boolean conversion failed"
             cat test/output/app.conf
             exit 1
