@@ -24,6 +24,8 @@ This GitHub Action allows you to render [Jinja2](https://jinja.palletsprojects.c
 
 ### Using Variables from a File
 
+#### JSON/YAML Variables File
+
 ```yaml
 name: Render Templates
 on:
@@ -42,6 +44,25 @@ jobs:
           template_path: './templates'
           output_path: './output'
           variables_file: './variables.json'
+```
+
+#### Using .env Files
+
+```yaml
+- name: Render Jinja2 Templates with .env
+  uses: lexty/jinja2-renderer@v1
+  with:
+    template_path: './templates'
+    output_path: './output'
+    variables_file: '.env'
+```
+
+Your `.env` file:
+```bash
+APP_NAME=MyApplication
+VERSION=1.2.3
+DEBUG=true
+PORT=8080
 ```
 
 ### Using JSON Inline Variables
@@ -135,7 +156,8 @@ debug = {{ env.get('DEBUG_MODE', 'false') }}
 |-------|-------------|----------|---------|
 | `template_path` | Path to the Jinja2 template file or directory | Yes | - |
 | `output_path` | Path where rendered files will be saved | Yes | - |
-| `variables_file` | Path to a JSON or YAML file with variables | No | - |
+| `variables_file` | Path to a JSON, YAML, or .env file with variables | No | - |
+| `variables_file_format` | Explicit format specification for variables_file (`json`, `yaml`, `env`). If not specified, format is auto-detected by file extension | No | auto-detect |
 | `variables` | JSON string or key=value pairs for variables | No | - |
 | `environment_variables` | Use environment variables in templates | No | `true` |
 | `recursive` | Process templates in subdirectories recursively | No | `false` |
@@ -201,6 +223,20 @@ For more detailed examples with template files and configurations, check out the
     file_pattern: '*.template'
 ```
 
+### Using Explicit Format Specification
+
+If your variables file has a non-standard extension, you can explicitly specify the format:
+
+```yaml
+- name: Render with Explicit Format
+  uses: lexty/jinja2-renderer@v1
+  with:
+    template_path: './templates'
+    output_path: './output'
+    variables_file: './my-vars.txt'
+    variables_file_format: 'env'  # Force treating as .env file
+```
+
 ### Using the Output
 
 ```yaml
@@ -250,7 +286,7 @@ When using `strict: true`, all variables used in templates must be defined. If y
 
 ### Variables File
 
-You can provide variables in either JSON or YAML format:
+You can provide variables in JSON, YAML, or .env format:
 
 #### JSON (variables.json)
 
@@ -280,6 +316,34 @@ database:
   port: 5432
 ```
 
+#### .env (variables.env or .env)
+
+```bash
+# Application configuration
+APP_NAME=MyApp
+VERSION=1.2.3
+DEBUG=true
+PORT=8080
+
+# Database settings
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME="my database"
+
+# Multiline values (quoted)
+DESCRIPTION="This is a
+multiline
+description"
+```
+
+**Note**: .env files support:
+- Comments (lines starting with `#`)
+- Quoted values with spaces (`KEY="value with spaces"`)
+- Single and double quotes
+- Multiline values (in quoted strings)
+- Escape sequences (`\n`, `\t`, etc.)
+- Automatic type conversion (booleans, integers, floats)
+
 ### Template Example
 
 ```jinja
@@ -297,6 +361,36 @@ features:
 database:
   host: {{ database.host }}
   port: {{ database.port }}
+```
+
+## Local Development
+
+If you want to test the action locally or contribute to development, you'll need to install the required Python dependencies:
+
+```bash
+pip3 install jinja2 pyyaml python-dotenv
+```
+
+Then you can run the entrypoint script directly:
+
+```bash
+# Set required environment variables
+export INPUT_TEMPLATE_PATH="./templates/test.j2"
+export INPUT_OUTPUT_PATH="./output/test.conf"
+export INPUT_VARIABLES_FILE="./variables.env"
+
+# Run the script
+python3 entrypoint.py
+```
+
+For testing with inline variables:
+
+```bash
+export INPUT_TEMPLATE_PATH="./templates/test.j2"
+export INPUT_OUTPUT_PATH="./output/test.conf"
+export INPUT_VARIABLES='{"key": "value"}'
+
+python3 entrypoint.py
 ```
 
 ## Contributing

@@ -39,6 +39,43 @@ debug = True
 log_level = info
 ```
 
+### Using .env Files
+
+**Template (`templates/app.conf.j2`):**
+```jinja
+# Application: {{ APP_NAME }}
+# Version: {{ VERSION }}
+# Debug Mode: {{ DEBUG }}
+# Port: {{ PORT }}
+```
+
+**Variables (`.env`):**
+```bash
+# Application settings
+APP_NAME=MyAwesomeApp
+VERSION=2.0.0
+DEBUG=true
+PORT=8080
+```
+
+**Workflow:**
+```yaml
+- name: Render Config from .env
+  uses: lexty/jinja2-renderer@v1
+  with:
+    template_path: 'templates/app.conf.j2'
+    output_path: 'output/app.conf'
+    variables_file: '.env'
+```
+
+**Result (`output/app.conf`):**
+```
+# Application: MyAwesomeApp
+# Version: 2.0.0
+# Debug Mode: true
+# Port: 8080
+```
+
 ### Directory Processing
 
 **Structure:**
@@ -176,6 +213,65 @@ optional_value = {{ optional_value | default('default value') }}
     output_path: 'output/config'
     variables: 'required_value=exists'
     strict: 'true'  # This will fail if any variable is undefined
+```
+
+### Advanced .env Features
+
+**Template (`templates/advanced.conf.j2`):**
+```jinja
+# {{ APP_NAME }} Configuration
+
+# Basic settings
+port = {{ PORT }}
+debug = {{ DEBUG }}
+
+# Quoted values
+message = {{ MESSAGE }}
+path = {{ INSTALL_PATH }}
+
+# Description (multiline)
+{{ DESCRIPTION }}
+```
+
+**Variables (`config.env`):**
+```bash
+APP_NAME=AdvancedApp
+PORT=3000
+DEBUG=false
+
+# Values with spaces need quotes
+MESSAGE="Hello, World! Welcome to our application."
+INSTALL_PATH="/usr/local/bin/myapp"
+
+# Multiline values
+DESCRIPTION="This application provides
+advanced features for
+enterprise users"
+```
+
+**Workflow:**
+```yaml
+- name: Render Advanced Config
+  uses: lexty/jinja2-renderer@v1
+  with:
+    template_path: 'templates/advanced.conf.j2'
+    output_path: 'output/advanced.conf'
+    variables_file: 'config.env'
+```
+
+### Explicit Format Specification
+
+When your variables file doesn't have a standard extension:
+
+**Workflow:**
+```yaml
+- name: Render with Custom Extension
+  uses: lexty/jinja2-renderer@v1
+  with:
+    template_path: 'templates/app.conf.j2'
+    output_path: 'output/app.conf'
+    variables_file: 'vars.txt'
+    variables_file_format: 'env'  # Explicitly treat as .env format
 ```
 
 ## Use Cases

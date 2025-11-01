@@ -8,26 +8,94 @@ import glob
 import re
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from dotenv import dotenv_values
 
 def get_env_bool(var_name, default=False):
     """Convert environment variable to boolean."""
     val = os.environ.get(var_name, str(default)).lower()
     return val in ('true', 't', 'yes', 'y', '1')
 
-def load_variables_from_file(file_path):
-    """Load variables from JSON or YAML file."""
+def convert_value_type(value):
+    """Convert string value to appropriate type (bool, int, float, or str)."""
+    if not isinstance(value, str):
+        return value
+
+    # Try boolean conversion
+    if value.lower() in ('true', 't', 'yes', 'y', '1'):
+        return True
+    elif value.lower() in ('false', 'f', 'no', 'n', '0'):
+        return False
+
+    # Try integer conversion
+    if value.isdigit() or (value.startswith('-') and value[1:].isdigit()):
+        return int(value)
+
+    # Try float conversion
+    try:
+        if '.' in value:
+            return float(value)
+    except ValueError:
+        pass
+
+    # Return as string
+    return value
+
+def load_env_file(file_path):
+    """Load variables from .env file using python-dotenv."""
     if not os.path.exists(file_path):
         print(f"Error: Variables file '{file_path}' not found", file=sys.stderr)
         sys.exit(1)
 
+    try:
+        # dotenv_values returns a dict with all values as strings
+        env_vars = dotenv_values(file_path)
+
+        # Convert values to appropriate types
+        converted_vars = {}
+        for key, value in env_vars.items():
+            if value is not None:
+                converted_vars[key] = convert_value_type(value)
+
+        return converted_vars
+    except Exception as e:
+        print(f"Error parsing .env file: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def detect_file_format(file_path, explicit_format=None):
+    """Detect the format of the variables file."""
+    if explicit_format:
+        return explicit_format.lower()
+
+    # Auto-detect by extension
+    if file_path.endswith('.env'):
+        return 'env'
+    elif file_path.endswith(('.yaml', '.yml')):
+        return 'yaml'
+    elif file_path.endswith('.json'):
+        return 'json'
+    else:
+        # Default to JSON for unknown extensions
+        return 'json'
+
+def load_variables_from_file(file_path, file_format=None):
+    """Load variables from JSON, YAML, or .env file."""
+    if not os.path.exists(file_path):
+        print(f"Error: Variables file '{file_path}' not found", file=sys.stderr)
+        sys.exit(1)
+
+    format_type = detect_file_format(file_path, file_format)
+
+    if format_type == 'env':
+        return load_env_file(file_path)
+
     with open(file_path, 'r') as f:
-        if file_path.endswith(('.yaml', '.yml')):
+        if format_type == 'yaml':
             try:
                 return yaml.safe_load(f)
             except yaml.YAMLError as e:
                 print(f"Error parsing YAML file: {e}", file=sys.stderr)
                 sys.exit(1)
-        else:
+        else:  # json
             try:
                 return json.load(f)
             except json.JSONDecodeError as e:
@@ -145,10 +213,6 @@ def render_template(template_file, template_dir, output_path, variables, env):
         # Render and write the template
         rendered_content = template.render(**variables)
 
-        # Apply additional formatting to the rendered content:
-        # Replace Python's "True" with "true"
-        rendered_content = rendered_content.replace(" True", " true").replace(" False", " false")
-
         with open(output_file, 'w') as f:
             f.write(rendered_content)
 
@@ -166,6 +230,7 @@ def main():
     template_path = os.environ.get('INPUT_TEMPLATE_PATH')
     output_path = os.environ.get('INPUT_OUTPUT_PATH')
     variables_file = os.environ.get('INPUT_VARIABLES_FILE')
+    variables_file_format = os.environ.get('INPUT_VARIABLES_FILE_FORMAT')
     variables_string = os.environ.get('INPUT_VARIABLES')
 
     use_env_vars = get_env_bool('INPUT_ENVIRONMENT_VARIABLES', True)
@@ -188,15 +253,16 @@ def main():
     variables = {}
 
     if variables_file:
-        print(f"Loading variables from file: {variables_file}")
-        variables.update(load_variables_from_file(variables_file))
+        format_info = f" (format: {variables_file_format})" if variables_file_format else " (auto-detect)"
+        print(f"Loading variables from file: {variables_file}{format_info}")
+        variables.update(load_variables_from_file(variables_file, variables_file_format))
 
     if variables_string:
         print(f"Loading variables from input string")
         try:
             parsed_vars = load_variables_from_string(variables_string)
             variables.update(parsed_vars)
-            print(f"Loaded variables: {json.dumps(parsed_vars, indent=2)}")
+            print(f"Loaded {len(parsed_vars)} variable(s) from input string")
         except Exception as e:
             print(f"Error parsing variables: {e}", file=sys.stderr)
             sys.exit(1)

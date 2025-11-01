@@ -5,7 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2025-03-21
+## [1.3.0] - 2025-11-01
+
+### Added
+- Support for .env file format in `variables_file` input
+- New `variables_file_format` input parameter for explicit format specification (json, yaml, env)
+- Automatic file format detection based on file extension (.env, .json, .yaml, .yml)
+- Full .env syntax support including:
+  - Comments (lines starting with `#`)
+  - Quoted values (single and double quotes)
+  - Multiline values in quoted strings
+  - Escape sequences (`\n`, `\t`, etc.)
+  - Automatic type conversion for values (boolean, integer, float, string)
+- Comprehensive test coverage for .env file functionality
+
+### Changed
+- Enhanced `load_variables_from_file()` function to support multiple file formats
+- Improved logging to show detected or explicitly specified file format
+
+### Security
+- .env files are not printed to logs, preventing accidental exposure of secrets in GitHub Actions output
+
+## [1.2.0] - 2025-03-21
 
 ### Added
 - Enhanced variable parsing with automatic type conversion
